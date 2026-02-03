@@ -1,0 +1,7 @@
+{
+  "name": "AMS school | Gestión",
+  "description": "Sistema moderno de gestión para escuelas de música con control de alumnos, asistencia, finanzas y alertas inteligentes.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
