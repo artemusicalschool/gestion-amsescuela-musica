@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Student, StudentStatus, Teacher, AttendanceRecord, ClassModality, ClassCategory } from '../types';
-// Fixed: Added Users as UsersIcon to imports from lucide-react
 import { Check, X, Calendar as CalendarIcon, User, Music, Info, AlertCircle, Users as UsersIcon } from 'lucide-react';
 
 interface Props {
@@ -28,7 +27,6 @@ const AttendanceTracker: React.FC<Props> = ({ students, setStudents, teachers, a
     if (!student) return;
 
     // Intentar encontrar el detalle del plan del alumno para esta categoría
-    // Nota: Esto asume que el alumno tiene planes registrados en 'enrollments'
     const plan = student.enrollments.find(e => e.category === modality);
 
     const exists = attendance.find(a => a.studentId === studentId && a.date === currentDate && a.modality === modality);
@@ -43,7 +41,6 @@ const AttendanceTracker: React.FC<Props> = ({ students, setStudents, teachers, a
         date: currentDate,
         status,
         modality,
-        // Guardar detalles específicos para la liquidación
         classType: plan?.type,
         duration: plan?.duration,
         ensambleType: plan?.ensambleType

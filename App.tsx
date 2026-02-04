@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   CreditCard,
   Menu,
-  ImageIcon,
+  Image as ImageIcon,
   Upload,
   Lock,
   Eye,
@@ -131,7 +131,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Add handleExportBackup and handleImportBackup to resolve missing names
   const handleExportBackup = () => {
     const backupData = {
       students: localStorage.getItem('ams_students'),
@@ -160,7 +159,7 @@ const App: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = JSON.parse(e.target.result as string);
+        const data = JSON.parse((e.target as FileReader).result as string);
         if (data.students) localStorage.setItem('ams_students', data.students);
         if (data.teachers) localStorage.setItem('ams_teachers', data.teachers);
         if (data.attendance) localStorage.setItem('ams_attendance', data.attendance);
@@ -324,7 +323,7 @@ const App: React.FC = () => {
           <NavItem icon={<Users size={20}/>} label="Alumnos" active={activeTab === 'students'} onClick={() => setActiveTab('students')} isOpen={isSidebarOpen} />
           
           <div className="relative group/nav">
-            <NavItem icon={<CreditCard size={20}/>} label="Facturar" active={activeTab === 'payments'} onClick={() => setActiveTab('payments'} isOpen={isSidebarOpen} />
+            <NavItem icon={<CreditCard size={20}/>} label="Facturar" active={activeTab === 'payments'} onClick={() => setActiveTab('payments')} isOpen={isSidebarOpen} />
             {isSidebarOpen && (
               <button 
                 onClick={() => setShowPriceModal(true)}
@@ -631,7 +630,7 @@ const PriceCategorySection: React.FC<{ title: string, data: any, onChange: (type
                   <input 
                     type="number" 
                     value={data[type][dur]} 
-                    onChange={(e) => onChange(type, dur, Number(e.target.value))}
+                    onChange={(e) => onChange(type, dur, Number((e.target as HTMLInputElement).value))}
                     className="w-full bg-ams-cream/30 border-none rounded-xl pl-6 pr-3 py-1.5 text-xs font-black text-ams-dark ring-1 ring-ams-peach/30 focus:ring-2 focus:ring-ams-orange outline-none transition-all"
                   />
                 </div>
