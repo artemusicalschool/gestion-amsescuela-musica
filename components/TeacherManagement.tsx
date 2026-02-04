@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Teacher, AttendanceRecord, ClassCategory } from '../types';
+import { Teacher, AttendanceRecord, ClassCategory, ClassType, ClassDuration, EnsambleType } from '../types';
 import { INSTRUMENTS } from '../constants';
 import { 
   Plus, 
@@ -14,7 +14,13 @@ import {
   Briefcase, 
   X, 
   DollarSign,
-  ShieldCheck
+  ShieldCheck,
+  ChevronDown,
+  UserCheck,
+  Award,
+  Layers,
+  Clock,
+  Users as UsersIcon
 } from 'lucide-react';
 
 interface Props {
@@ -25,18 +31,16 @@ interface Props {
 }
 
 const TeacherManagement: React.FC<Props> = ({ teachers, setTeachers, attendance }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
 
-  const filteredTeachers = teachers.filter(t => 
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    t.instrument.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
 
   const deleteTeacher = (id: string, name: string) => {
     if (window.confirm(`¿Estás seguro de eliminar a ${name}?\n\nEsta acción es permanente.`)) {
       setTeachers(prev => prev.filter(t => t.id !== id));
+      if (selectedTeacherId === id) setSelectedTeacherId('');
     }
   };
 
@@ -44,9 +48,12 @@ const TeacherManagement: React.FC<Props> = ({ teachers, setTeachers, attendance 
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const rates: any = {};
-    Object.values(ClassCategory).forEach(cat => {
-      rates[cat] = parseFloat(formData.get(`rate_${cat}`) as string) || 0;
+    // Capturar todos los honorarios específicos
+    const rates: Record<string, number> = {};
+    formData.forEach((value, key) => {
+      if (key.startsWith('rate_')) {
+        rates[key.replace('rate_', '')] = parseFloat(value as string) || 0;
+      }
     });
 
     const teacherData: Partial<Teacher> = {
@@ -54,7 +61,7 @@ const TeacherManagement: React.FC<Props> = ({ teachers, setTeachers, attendance 
       instrument: formData.get('instrument') as string,
       phone: formData.get('phone') as string,
       email: formData.get('email') as string,
-      rates: rates as { [key in ClassCategory]: number },
+      rates,
       status: 'activo'
     };
 
@@ -66,168 +73,227 @@ const TeacherManagement: React.FC<Props> = ({ teachers, setTeachers, attendance 
         ...teacherData as Omit<Teacher, 'id'>
       };
       setTeachers(prev => [...prev, newTeacher]);
+      setSelectedTeacherId(newTeacher.id);
     }
 
     setShowModal(false);
     setEditingTeacher(null);
   };
 
+  const teacherClasses = selectedTeacher ? attendance.filter(a => a.teacherId === selectedTeacher.id && a.status === 'present').length : 0;
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-3xl font-black text-ams-dark tracking-tight">Staff Docente</h2>
-            <p className="text-ams-brown/70 font-medium uppercase text-[10px] tracking-widest font-bold">Administración de Profesores y Especialidades</p>
-          </div>
-          <button 
-            onClick={() => { setEditingTeacher(null); setShowModal(true); }}
-            className="flex items-center gap-2 bg-ams-orange text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-ams-orange/20 hover:scale-105 active:scale-95 transition-all text-xs uppercase tracking-widest"
-          >
-            <UserPlus size={18} />
-            Agregar nuevo docente
-          </button>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h2 className="text-5xl font-display font-black text-ams-dark tracking-tighter">Cuerpo Docente</h2>
+          <p className="text-ams-brown/40 font-bold uppercase text-[10px] tracking-[0.4em] mt-3 flex items-center gap-2">
+            <Briefcase size={14} className="text-ams-orange" /> ADMINISTRACIÓN DE TALENTO AMS
+          </p>
         </div>
-        <div className="flex gap-4 bg-white p-3 rounded-2xl border border-ams-peach/50 w-full md:w-96 shadow-sm focus-within:ring-2 focus-within:ring-ams-orange transition-all">
-          <Search size={20} className="text-ams-orange mt-0.5" />
-          <input 
-            type="text" 
-            placeholder="Buscar por nombre o instrumento..." 
-            className="bg-transparent border-none focus:ring-0 text-sm w-full font-bold placeholder:text-ams-brown/30"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <button 
+          onClick={() => { setEditingTeacher(null); setShowModal(true); }}
+          className="btn-main group flex items-center gap-3 bg-ams-orange text-white px-10 py-5 rounded-4xl font-bold text-sm uppercase tracking-widest shadow-orange-glow border border-white/20 active:scale-95 transition-all"
+        >
+          <UserPlus size={20} className="group-hover:rotate-12 transition-transform" /> Registrar Profesor
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTeachers.length > 0 ? filteredTeachers.map(teacher => {
-          const teacherClasses = attendance.filter(a => a.teacherId === teacher.id && a.status === 'present').length;
-          
-          return (
-            <div key={teacher.id} className="bg-white rounded-[2.5rem] shadow-sm border border-ams-peach overflow-hidden group hover:shadow-xl hover:shadow-ams-orange/5 transition-all">
-              <div className="p-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="w-16 h-16 rounded-3xl bg-ams-orange text-white flex items-center justify-center text-2xl font-black shadow-lg shadow-ams-orange/20 rotate-2 group-hover:rotate-0 transition-transform">
-                    {teacher.name[0]}
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="glass p-8 rounded-[3rem] shadow-soft border border-white/60">
+          <label className="block text-[11px] font-black text-ams-brown/40 uppercase tracking-[0.3em] mb-4 pl-4">Seleccione un profesor para gestionar</label>
+          <div className="relative">
+            <select 
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(e.target.value)}
+              className="w-full bg-ams-cream/50 border-none rounded-[2rem] px-8 py-6 font-display font-black text-ams-dark text-xl ring-2 ring-ams-peach/40 focus:ring-ams-orange outline-none appearance-none transition-all shadow-inner cursor-pointer"
+            >
+              <option value="" disabled>— Seleccionar de la lista —</option>
+              {teachers.map(t => (
+                <option key={t.id} value={t.id}>{t.name.toUpperCase()} — {t.instrument}</option>
+              ))}
+            </select>
+            <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-ams-orange">
+              <ChevronDown size={28} />
+            </div>
+          </div>
+        </div>
+
+        {selectedTeacher ? (
+          <div className="animate-in slide-in-from-top-4 fade-in duration-500">
+            <div className="bg-white rounded-[4rem] shadow-2xl border border-ams-peach overflow-hidden group">
+              <div className="p-12">
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-10">
+                  <div className="flex flex-col sm:flex-row items-center gap-8">
+                    <div className="w-32 h-32 rounded-[3rem] bg-ams-dark text-white flex items-center justify-center text-5xl font-display font-black shadow-2xl shadow-ams-dark/20 rotate-3 group-hover:rotate-0 transition-transform">
+                      {selectedTeacher.name[0]}
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <h3 className="text-4xl font-display font-black text-ams-dark tracking-tighter leading-none">{selectedTeacher.name}</h3>
+                      <div className="flex items-center justify-center sm:justify-start gap-3 text-ams-orange mt-4">
+                        <Award size={20} className="font-bold" />
+                        <span className="text-xs font-black uppercase tracking-[0.2em]">{selectedTeacher.instrument}</span>
+                      </div>
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-3 mt-6">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-ams-cream rounded-full border border-ams-peach/30">
+                          <Phone size={14} className="text-ams-brown/40" />
+                          <span className="text-[10px] font-bold text-ams-brown">{selectedTeacher.phone || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-ams-cream rounded-full border border-ams-peach/30">
+                          <Mail size={14} className="text-ams-brown/40" />
+                          <span className="text-[10px] font-bold text-ams-brown">{selectedTeacher.email || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => { setEditingTeacher(teacher); setShowModal(true); }} className="p-2 text-ams-brown/30 hover:text-ams-orange transition-colors"><Edit3 size={18}/></button>
-                    <button onClick={() => deleteTeacher(teacher.id, teacher.name)} className="p-2 text-ams-brown/30 hover:text-rose-500 transition-colors"><Trash2 size={18}/></button>
+
+                  <div className="flex gap-4 w-full lg:w-auto">
+                    <button 
+                      onClick={() => { setEditingTeacher(selectedTeacher); setShowModal(true); }} 
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-3 bg-white border-2 border-ams-peach text-ams-brown px-8 py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest hover:bg-ams-peach/20 transition-all shadow-sm"
+                    >
+                      <Edit3 size={18} /> Editar Perfil
+                    </button>
+                    <button 
+                      onClick={() => deleteTeacher(selectedTeacher.id, selectedTeacher.name)} 
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-3 bg-rose-50 border-2 border-rose-100 text-rose-500 px-8 py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                    >
+                      <Trash2 size={18} /> Dar de Baja
+                    </button>
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <h3 className="text-xl font-black text-ams-dark">{teacher.name}</h3>
-                  <div className="flex items-center gap-2 text-ams-orange mt-1">
-                    <Music size={14} className="font-bold" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{teacher.instrument}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-8">
-                  <div className="flex items-center gap-3 text-ams-brown/60">
-                    <div className="w-8 h-8 rounded-xl bg-ams-peach/30 flex items-center justify-center"><Phone size={14} /></div>
-                    <span className="text-xs font-bold">{teacher.phone || 'Sin teléfono'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-ams-brown/60">
-                    <div className="w-8 h-8 rounded-xl bg-ams-peach/30 flex items-center justify-center"><Mail size={14} /></div>
-                    <span className="text-xs font-bold truncate">{teacher.email || 'Sin correo'}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                   <p className="text-[9px] font-black text-ams-brown/40 uppercase tracking-widest mb-1">Tarifas por Clase</p>
-                   <div className="grid grid-cols-2 gap-2">
-                     {Object.entries(teacher.rates).map(([mod, rate]) => (
-                       <div key={mod} className="bg-ams-peach/10 px-3 py-2 rounded-xl border border-ams-peach/30 flex flex-col">
-                          <span className="text-[8px] font-bold text-ams-brown/50 truncate uppercase">{mod}</span>
-                          <span className="text-xs font-black text-ams-dark">${rate.toLocaleString()}</span>
-                       </div>
-                     ))}
-                   </div>
+                <div className="mt-16 space-y-12">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-px bg-ams-peach"></div>
+                      <h4 className="text-[11px] font-black text-ams-brown/40 uppercase tracking-[0.3em]">Honorarios Académicos</h4>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+                      <SummaryRateSection title="🎸 Combos Mensuales" teacher={selectedTeacher} category={ClassCategory.COMBO} />
+                      <SummaryRateSection title="🎵 Clases Sueltas" teacher={selectedTeacher} category={ClassCategory.SUELTA} />
+                      <SummaryRateSection title="🤝 Ensambles" teacher={selectedTeacher} category={ClassCategory.ENSAMBLE} single />
+                      <SummaryRateSection title="🎹 Práctica" teacher={selectedTeacher} category={ClassCategory.PRACTICA} single />
+                    </div>
                 </div>
               </div>
-              
-              <div className="bg-ams-dark p-4 flex items-center justify-between text-white">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest">Activo</span>
-                </div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-white/50">{teacherClasses} clases dictadas</div>
+
+              <div className="bg-ams-cream/50 p-6 flex items-center justify-center gap-3 border-t border-ams-peach/20">
+                <ShieldCheck size={18} className="text-ams-orange/40" />
+                <p className="text-[9px] font-bold text-ams-brown/40 uppercase tracking-[0.1em]">Configuración de liquidación dinámica habilitada</p>
               </div>
             </div>
-          );
-        }) : (
-          <div className="col-span-full py-24 text-center">
-            <div className="bg-ams-peach/20 w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
-              <Briefcase size={40} className="text-ams-orange opacity-50" />
+          </div>
+        ) : (
+          <div className="py-32 text-center glass rounded-[4rem] border-2 border-dashed border-ams-peach/50 flex flex-col items-center">
+            <div className="w-24 h-24 rounded-[2rem] bg-ams-peach/10 flex items-center justify-center text-ams-orange mb-8 opacity-40">
+              <Briefcase size={48} />
             </div>
-            <h3 className="text-xl font-bold text-ams-brown/50 italic">No se encontraron profesores registrados.</h3>
+            <h3 className="text-xl font-display font-black text-ams-brown/30 uppercase tracking-widest">Seleccione un profesor para ver su ficha</h3>
+            <p className="text-xs font-bold text-ams-brown/20 uppercase tracking-widest mt-4">Gestione honorarios específicos por cada modalidad de clase</p>
           </div>
         )}
       </div>
 
-      {/* MODAL DE REGISTRO / EDICIÓN */}
       {showModal && (
-        <div className="fixed inset-0 bg-ams-dark/60 backdrop-blur-md flex items-center justify-center z-[130] p-4 overflow-y-auto" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl my-8 overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="bg-ams-dark p-10 text-white relative">
-              <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 hover:rotate-90 transition-transform"><X size={32} /></button>
-              <h3 className="text-4xl font-black tracking-tight">{editingTeacher ? 'Editar Profesor' : 'Nuevo Profesor'}</h3>
-              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-2">Configuración de Staff y Honorarios</p>
+        <div className="fixed inset-0 bg-ams-dark/60 backdrop-blur-xl flex items-center justify-center z-[130] p-4 overflow-hidden" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-[3.5rem] w-full max-w-4xl h-fit max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 border border-white/50" onClick={e => e.stopPropagation()}>
+            <div className="bg-ams-dark p-12 text-white relative shrink-0">
+              <button onClick={() => setShowModal(false)} className="absolute top-10 right-10 p-3 bg-white/10 rounded-2xl text-white/40 hover:text-white transition-all hover:rotate-90"><X size={32} /></button>
+              <h3 className="text-5xl font-display font-black tracking-tighter uppercase">{editingTeacher ? 'Actualizar Ficha' : 'Nuevo Profesor'}</h3>
+              <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.4em] mt-3">CONFIGURACIÓN DE TALENTO Y HONORARIOS AMS</p>
             </div>
             
-            <form onSubmit={handleSaveTeacher} className="p-10 space-y-10">
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 text-ams-orange font-black text-xs uppercase tracking-widest border-b border-ams-peach pb-4">
-                  <UserPlus size={18} /> Información Personal
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputGroup label="Nombre Completo" name="name" required defaultValue={editingTeacher?.name} />
-                  <div className="flex flex-col">
-                    <label className="block text-[10px] font-black text-ams-brown/50 uppercase tracking-widest mb-2">Especialidad</label>
-                    <select name="instrument" required defaultValue={editingTeacher?.instrument} className="w-full bg-[#FDF6F2] border-none rounded-2xl px-5 py-4 font-black text-ams-dark ring-1 ring-ams-peach outline-none focus:ring-2 focus:ring-ams-orange transition-all">
-                      {INSTRUMENTS.map(inst => <option key={inst} value={inst}>{inst}</option>)}
-                    </select>
-                  </div>
-                  <InputGroup label="WhatsApp" name="phone" defaultValue={editingTeacher?.phone} placeholder="54911..." />
-                  <InputGroup label="Email" name="email" type="email" defaultValue={editingTeacher?.email} />
+            <form onSubmit={handleSaveTeacher} className="flex-1 overflow-y-auto p-12 custom-scrollbar space-y-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <InputGroup label="Nombre Completo" name="name" required defaultValue={editingTeacher?.name} placeholder="Ej: Dr. Roberto Gómez" />
+                <div className="flex flex-col space-y-4">
+                  <label className="block text-[11px] font-black text-ams-brown/40 uppercase tracking-widest pl-4">Especialidad</label>
+                  <select name="instrument" required defaultValue={editingTeacher?.instrument} className="w-full bg-ams-cream/40 border-none rounded-[2rem] px-8 py-6 font-bold text-ams-dark ring-1 ring-ams-peach/40 focus:ring-2 focus:ring-ams-orange outline-none transition-all shadow-inner">
+                    {INSTRUMENTS.map(inst => <option key={inst} value={inst}>{inst}</option>)}
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 text-emerald-600 font-black text-xs uppercase tracking-widest border-b border-ams-peach pb-4">
-                  <DollarSign size={18} /> Honorarios por Clase (Liquidación)
+              <div className="space-y-10">
+                <div className="flex items-center gap-4 text-ams-orange">
+                  <div className="w-10 h-1 rounded-full bg-ams-orange"></div>
+                  <span className="text-[12px] font-black uppercase tracking-[0.3em] flex items-center gap-2">
+                    <DollarSign size={16} /> Esquema de Pagos por Clase Dictada
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.values(ClassCategory).map(cat => (
-                    <div key={cat} className="space-y-2">
-                      <label className="block text-[8px] font-black text-ams-brown/40 uppercase tracking-tight truncate">{cat}</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ams-brown/30 font-bold">$</span>
-                        <input 
-                          type="number" 
-                          name={`rate_${cat}`} 
-                          required 
-                          defaultValue={editingTeacher?.rates[cat] || 0}
-                          className="w-full bg-[#FDF6F2] border-none rounded-xl pl-6 pr-3 py-3 text-xs font-black text-ams-dark ring-1 ring-ams-peach focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                        />
-                      </div>
+
+                <div className="space-y-8">
+                  {/* Combos */}
+                  <RateEditorSection 
+                    title="🎸 Combos Mensuales" 
+                    prefix="COMBO"
+                    teacher={editingTeacher}
+                    hasType 
+                  />
+                  
+                  {/* Clases Sueltas */}
+                  <RateEditorSection 
+                    title="🎵 Clases Sueltas" 
+                    prefix="SUELTA"
+                    teacher={editingTeacher}
+                    hasType 
+                  />
+
+                  {/* Ensambles */}
+                  <div className="bg-ams-cream/30 p-8 rounded-[2.5rem] border border-ams-peach/20 space-y-6">
+                    <h5 className="text-[11px] font-black text-ams-brown/40 uppercase tracking-widest flex items-center gap-3">
+                      <Layers size={16} className="text-ams-orange" /> Honorarios Ensambles
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {Object.values(EnsambleType).map(eType => (
+                        <div key={eType} className="space-y-2">
+                          <label className="text-[9px] font-black text-ams-brown/40 uppercase pl-2">{eType}</label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ams-orange font-black text-xs">$</span>
+                            <input 
+                              type="number" 
+                              name={`rate_ENSAMBLE_${eType}`} 
+                              defaultValue={editingTeacher?.rates[`ENSAMBLE_${eType}`] || 0}
+                              className="w-full bg-white border-none rounded-2xl pl-8 pr-4 py-4 text-xs font-black text-ams-dark ring-1 ring-ams-peach/40 focus:ring-2 focus:ring-ams-orange outline-none transition-all"
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-start gap-3">
-                  <ShieldCheck className="text-emerald-600 mt-1" size={16} />
-                  <p className="text-[9px] font-bold text-emerald-800 leading-relaxed uppercase">
-                    Estas tarifas se usarán para calcular automáticamente el sueldo del docente basado en la asistencia marcada como "Presente" en cada modalidad.
-                  </p>
+                  </div>
+
+                  {/* Práctica */}
+                  <div className="bg-ams-cream/30 p-8 rounded-[2.5rem] border border-ams-peach/20 space-y-6">
+                    <h5 className="text-[11px] font-black text-ams-brown/40 uppercase tracking-widest flex items-center gap-3">
+                      <Clock size={16} className="text-ams-orange" /> Honorarios Práctica
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {Object.values(ClassDuration).map(dur => (
+                        <div key={dur} className="space-y-2">
+                          <label className="text-[9px] font-black text-ams-brown/40 uppercase pl-2">{dur}</label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ams-orange font-black text-xs">$</span>
+                            <input 
+                              type="number" 
+                              name={`rate_PRACTICA_${dur}`} 
+                              defaultValue={editingTeacher?.rates[`PRACTICA_${dur}`] || 0}
+                              className="w-full bg-white border-none rounded-2xl pl-8 pr-4 py-4 text-xs font-black text-ams-dark ring-1 ring-ams-peach/40 focus:ring-2 focus:ring-ams-orange outline-none transition-all"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-ams-orange text-white py-6 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-all">
-                {editingTeacher ? 'Actualizar Docente' : 'Guardar en el Staff'}
-              </button>
+              <div className="pt-8 border-t border-ams-peach/20 flex gap-6">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-8 py-6 rounded-3xl font-black text-ams-brown/40 bg-ams-cream/50 hover:bg-ams-cream transition-all text-[11px] uppercase tracking-widest">Descartar</button>
+                <button type="submit" className="flex-1 bg-ams-dark text-white px-8 py-6 rounded-3xl font-black text-[11px] uppercase tracking-[0.3em] shadow-dark-glow border border-white/10">
+                  {editingTeacher ? 'Confirmar Cambios' : 'Registrar Profesor'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -236,16 +302,98 @@ const TeacherManagement: React.FC<Props> = ({ teachers, setTeachers, attendance 
   );
 };
 
+const SummaryRateSection: React.FC<{ title: string, teacher: Teacher, category: ClassCategory, single?: boolean }> = ({ title, teacher, category, single }) => {
+  const prefix = category === ClassCategory.COMBO ? 'COMBO' : category === ClassCategory.SUELTA ? 'SUELTA' : category === ClassCategory.ENSAMBLE ? 'ENSAMBLE' : 'PRACTICA';
+  
+  return (
+    <div className="space-y-4">
+      <h5 className="text-[10px] font-black text-ams-orange uppercase tracking-widest pl-2">{title}</h5>
+      <div className="space-y-2">
+        {category === ClassCategory.COMBO || category === ClassCategory.SUELTA ? (
+          <>
+            {Object.values(ClassType).map(type => (
+              <div key={type} className="flex items-center gap-2">
+                <span className="text-[8px] font-black text-ams-brown/30 uppercase min-w-[60px]">{type}</span>
+                <div className="flex-1 grid grid-cols-3 gap-2">
+                  {Object.values(ClassDuration).map(dur => (
+                    <div key={dur} className="bg-ams-cream/40 p-3 rounded-xl border border-ams-peach/30 text-center">
+                      <p className="text-[7px] font-bold text-ams-brown/40 uppercase mb-1">{dur}</p>
+                      <p className="text-xs font-black text-ams-dark">${(teacher.rates[`${prefix}_${type.toUpperCase()}_${dur}`] || 0).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        ) : category === ClassCategory.ENSAMBLE ? (
+          <div className="grid grid-cols-2 gap-2">
+            {Object.values(EnsambleType).map(eType => (
+              <div key={eType} className="bg-ams-cream/40 p-4 rounded-xl border border-ams-peach/30 flex justify-between items-center">
+                <span className="text-[8px] font-black text-ams-brown/40 uppercase">{eType}</span>
+                <span className="text-xs font-black text-ams-dark">${(teacher.rates[`ENSAMBLE_${eType}`] || 0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {Object.values(ClassDuration).map(dur => (
+              <div key={dur} className="bg-ams-cream/40 p-4 rounded-xl border border-ams-peach/30 text-center">
+                <p className="text-[7px] font-bold text-ams-brown/40 uppercase mb-1">{dur}</p>
+                <p className="text-xs font-black text-ams-dark">${(teacher.rates[`PRACTICA_${dur}`] || 0).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const RateEditorSection: React.FC<{ title: string, prefix: string, teacher: Teacher | null, hasType?: boolean }> = ({ title, prefix, teacher, hasType }) => (
+  <div className="bg-ams-cream/30 p-8 rounded-[2.5rem] border border-ams-peach/20 space-y-6">
+    <h5 className="text-[11px] font-black text-ams-brown/40 uppercase tracking-widest flex items-center gap-3">
+      {prefix === 'COMBO' ? <Layers size={16} className="text-ams-orange" /> : <Clock size={16} className="text-ams-orange" />} {title}
+    </h5>
+    
+    <div className="space-y-6">
+      {Object.values(ClassType).map(type => (
+        <div key={type} className="space-y-4">
+          <div className="flex items-center gap-3 pl-2">
+            <UsersIcon size={12} className="text-ams-brown/20" />
+            <span className="text-[9px] font-black text-ams-brown/30 uppercase tracking-widest">Modalidad {type}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {Object.values(ClassDuration).map(dur => (
+              <div key={dur} className="space-y-2">
+                <label className="text-[9px] font-black text-ams-brown/40 uppercase pl-2">{dur}</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ams-orange font-black text-xs">$</span>
+                  <input 
+                    type="number" 
+                    name={`rate_${prefix}_${type.toUpperCase()}_${dur}`} 
+                    defaultValue={teacher?.rates[`${prefix}_${type.toUpperCase()}_${dur}`] || 0}
+                    className="w-full bg-white border-none rounded-2xl pl-8 pr-4 py-4 text-xs font-black text-ams-dark ring-1 ring-ams-peach/40 focus:ring-2 focus:ring-ams-orange outline-none transition-all"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const InputGroup: React.FC<{ label: string, name: string, type?: string, required?: boolean, defaultValue?: any, placeholder?: string }> = ({ label, name, type = 'text', required, defaultValue, placeholder }) => (
-  <div>
-    <label className="block text-[10px] font-black text-ams-brown/50 uppercase tracking-widest mb-2">{label}</label>
+  <div className="space-y-4">
+    <label className="block text-[11px] font-black text-ams-brown/40 uppercase tracking-widest pl-4">{label}</label>
     <input 
       type={type} 
       name={name} 
       defaultValue={defaultValue} 
       placeholder={placeholder} 
       required={required} 
-      className="w-full bg-[#FDF6F2] border-none rounded-2xl px-5 py-4 text-sm font-black text-ams-dark ring-1 ring-ams-peach/50 focus:ring-2 focus:ring-ams-orange outline-none transition-all" 
+      className="w-full bg-ams-cream/40 border-none rounded-[2rem] px-8 py-6 text-base font-bold text-ams-dark ring-1 ring-ams-peach/40 focus:ring-2 focus:ring-ams-orange outline-none transition-all shadow-inner" 
     />
   </div>
 );

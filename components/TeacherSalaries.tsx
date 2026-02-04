@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Teacher, AttendanceRecord, ClassCategory } from '../types';
-import { DollarSign, UserCheck, Calendar, Briefcase, Calculator } from 'lucide-react';
+import { Teacher, AttendanceRecord, ClassCategory, ClassType, ClassDuration, EnsambleType } from '../types';
+import { DollarSign, UserCheck, Calendar, Briefcase, Calculator, Layers, AlertCircle } from 'lucide-react';
 
 interface Props {
   teachers: Teacher[];
@@ -9,103 +9,128 @@ interface Props {
 }
 
 const TeacherSalaries: React.FC<Props> = ({ teachers, attendance }) => {
+  // Helper para obtener el honorario exacto
+  const getRateForClass = (teacher: Teacher, record: AttendanceRecord): number => {
+    const { modality, classType, duration, ensambleType } = record;
+    
+    let rateKey = "";
+    if (modality === ClassCategory.COMBO) {
+      rateKey = `COMBO_${classType?.toUpperCase()}_${duration}`;
+    } else if (modality === ClassCategory.SUELTA) {
+      rateKey = `SUELTA_${classType?.toUpperCase()}_${duration}`;
+    } else if (modality === ClassCategory.ENSAMBLE) {
+      rateKey = `ENSAMBLE_${ensambleType}`;
+    } else if (modality === ClassCategory.PRACTICA) {
+      rateKey = `PRACTICA_${duration}`;
+    }
+
+    return teacher.rates[rateKey] || 0;
+  };
+
+  const totalSchoolLiquidation = teachers.reduce((acc, t) => {
+    const presentClasses = attendance.filter(a => a.teacherId === t.id && a.status === 'present');
+    return acc + presentClasses.reduce((sum, a) => sum + getRateForClass(t, a), 0);
+  }, 0);
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-3xl font-black text-ams-dark tracking-tight">Liquidación de Haberes</h2>
-          <p className="text-ams-brown/70 font-medium uppercase text-[10px] tracking-widest font-black">Cálculo automático de sueldos según clases dictadas</p>
+          <h2 className="text-5xl font-display font-black text-ams-dark tracking-tighter">Liquidación</h2>
+          <p className="text-ams-brown/40 font-bold uppercase text-[10px] tracking-[0.4em] mt-3 flex items-center gap-2">
+            <Calculator size={14} className="text-ams-orange" /> NÓMINA DINÁMICA DE HABERES
+          </p>
         </div>
-        <div className="bg-white px-6 py-3 rounded-2xl border border-ams-peach shadow-sm flex items-center gap-4">
-          <Calculator className="text-ams-orange" size={24} />
-          <div>
-            <p className="text-[8px] font-black text-ams-brown/40 uppercase tracking-widest">Total Staff a Liquidar</p>
-            <p className="text-lg font-black text-ams-dark">
-              ${teachers.reduce((acc, t) => {
-                const presentClasses = attendance.filter(a => a.teacherId === t.id && a.status === 'present');
-                return acc + presentClasses.reduce((sum, a) => sum + (t.rates[a.modality as ClassCategory] || 0), 0);
-              }, 0).toLocaleString()}
-            </p>
+        <div className="bg-ams-dark p-8 rounded-[2.5rem] shadow-dark-glow text-white flex items-center gap-6 min-w-[300px] relative overflow-hidden">
+          <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12"><DollarSign size={100} /></div>
+          <div className="bg-ams-orange/20 p-4 rounded-2xl text-ams-orange">
+             <Layers size={32} />
+          </div>
+          <div className="relative z-10">
+            <p className="text-[10px] font-black uppercase opacity-40 tracking-widest mb-1">Monto Total a Liquidar</p>
+            <p className="text-4xl font-display font-black tracking-tighter">${totalSchoolLiquidation.toLocaleString()}</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {teachers.map(teacher => {
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {teachers.length > 0 ? teachers.map(teacher => {
           const teacherAttendance = attendance.filter(a => a.teacherId === teacher.id && a.status === 'present');
-          const totalEarned = teacherAttendance.reduce((acc, a) => {
-            const rate = teacher.rates[a.modality as ClassCategory] || 0;
-            return acc + rate;
-          }, 0);
+          const totalEarned = teacherAttendance.reduce((acc, a) => acc + getRateForClass(teacher, a), 0);
 
           return (
-            <div key={teacher.id} className="bg-white rounded-[3rem] shadow-sm border border-ams-peach p-10 overflow-hidden relative group">
-              <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform pointer-events-none">
-                <Briefcase size={120} />
-              </div>
-
-              <div className="flex items-center gap-6 mb-10">
-                <div className="w-20 h-20 rounded-[2rem] bg-ams-dark text-white flex items-center justify-center font-black text-3xl shadow-xl shadow-ams-dark/20 rotate-3">
-                  {teacher.name[0]}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-ams-dark">{teacher.name}</h3>
-                  <div className="flex items-center gap-2 text-ams-orange font-black text-[10px] uppercase tracking-widest">
-                    <UserCheck size={14} /> {teacher.instrument}
+            <div key={teacher.id} className="bg-white rounded-[4rem] shadow-xl border border-ams-peach p-12 group transition-all hover:shadow-2xl">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-12">
+                <div className="flex items-center gap-6">
+                  <div className="w-20 h-20 rounded-[2.5rem] bg-ams-dark text-white flex items-center justify-center font-display font-black text-3xl shadow-lg group-hover:rotate-6 transition-transform">
+                    {teacher.name[0]}
                   </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-                {Object.values(ClassCategory).map(cat => (
-                  <div key={cat} className="bg-[#FDF6F2] p-4 rounded-2xl border border-ams-peach/50">
-                    <p className="text-[8px] font-black text-ams-brown/40 uppercase tracking-tighter mb-1 truncate">{cat}</p>
-                    <p className="text-sm font-black text-ams-dark">${teacher.rates[cat]?.toLocaleString() || '0'}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-ams-dark rounded-[2.5rem] p-8 text-white flex items-center justify-between shadow-2xl shadow-ams-dark/30">
-                <div>
-                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Total a Liquidar</p>
-                  <p className="text-4xl font-black tracking-tighter">${totalEarned.toLocaleString()}</p>
-                </div>
-                <div className="flex flex-col items-end">
-                  <p className="text-[10px] font-black text-white/40 uppercase mb-1">{teacherAttendance.length} Clases Dictadas</p>
-                  <button className="bg-ams-orange text-white p-4 rounded-2xl hover:scale-110 transition-transform shadow-lg shadow-ams-orange/20">
-                    <DollarSign size={24} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-10">
-                <div className="flex items-center justify-between border-b border-ams-peach pb-4 mb-4">
-                  <h4 className="text-[10px] font-black text-ams-brown/40 uppercase tracking-widest flex items-center gap-2">
-                    <Calendar size={14} /> Detalle de Asistencia Presente
-                  </h4>
-                </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-3 custom-scrollbar">
-                  {teacherAttendance.length > 0 ? [...teacherAttendance].reverse().map(a => (
-                    <div key={a.id} className="flex justify-between items-center bg-ams-peach/5 p-4 rounded-2xl border border-ams-peach/20 hover:bg-ams-peach/10 transition-colors">
-                      <div className="flex flex-col">
-                         <span className="text-[10px] font-black text-ams-dark uppercase">{a.date}</span>
-                         <span className="text-[8px] font-bold text-ams-brown/50 italic tracking-wider">Verificado por sistema</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="block text-[9px] font-black text-ams-orange uppercase">{a.modality}</span>
-                        <span className="block text-xs font-black text-ams-dark">${(teacher.rates[a.modality as ClassCategory] || 0).toLocaleString()}</span>
-                      </div>
+                  <div>
+                    <h3 className="text-3xl font-display font-black text-ams-dark tracking-tighter leading-none">{teacher.name}</h3>
+                    <div className="flex items-center gap-2 text-ams-orange mt-3">
+                       <Briefcase size={16} />
+                       <span className="text-[10px] font-black uppercase tracking-widest">{teacher.instrument}</span>
                     </div>
-                  )) : (
-                    <div className="py-8 text-center bg-[#FDF6F2] rounded-3xl border border-dashed border-ams-peach">
-                      <p className="text-xs text-ams-brown/40 font-bold italic">No se registran clases dictadas en este período.</p>
+                  </div>
+                </div>
+                <div className="text-right bg-ams-cream/50 px-8 py-5 rounded-[2rem] border border-ams-peach/30 min-w-[180px]">
+                   <p className="text-[10px] font-black text-ams-brown/30 uppercase tracking-widest mb-1">Haberes Acumulados</p>
+                   <p className="text-4xl font-display font-black text-ams-dark tracking-tighter">${totalEarned.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-ams-peach/20 pb-4">
+                  <h4 className="text-[11px] font-black text-ams-brown/40 uppercase tracking-widest flex items-center gap-2">
+                    <Calendar size={16} /> Registro de Clases Dictadas ({teacherAttendance.length})
+                  </h4>
+                  <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-100">Verificado</span>
+                </div>
+                
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-3 custom-scrollbar">
+                  {teacherAttendance.length > 0 ? [...teacherAttendance].reverse().map(a => {
+                    const rate = getRateForClass(teacher, a);
+                    return (
+                      <div key={a.id} className="flex justify-between items-center bg-ams-cream/30 p-5 rounded-[2rem] border border-ams-peach/20 group/item hover:bg-white hover:border-ams-orange/30 transition-all">
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-ams-orange shadow-sm border border-ams-peach/20">
+                             <UserCheck size={18} />
+                           </div>
+                           <div>
+                             <span className="block text-[10px] font-black text-ams-dark uppercase">{a.date}</span>
+                             <span className="block text-[8px] font-bold text-ams-brown/30 uppercase tracking-tighter">
+                               {a.modality} · {a.classType || a.ensambleType} · {a.duration || 'N/A'}
+                             </span>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-xl font-display font-black text-ams-dark tracking-tighter">${rate.toLocaleString()}</span>
+                          {rate === 0 && <span className="text-[7px] font-black text-rose-500 uppercase">Sin tarifa configurada</span>}
+                        </div>
+                      </div>
+                    );
+                  }) : (
+                    <div className="py-16 text-center bg-ams-cream/20 rounded-[3rem] border-2 border-dashed border-ams-peach/30">
+                       <AlertCircle size={40} className="mx-auto text-ams-brown/20 mb-4" />
+                       <p className="text-xs font-bold text-ams-brown/30 uppercase tracking-widest">No hay clases registradas para este profesor</p>
                     </div>
                   )}
                 </div>
               </div>
+
+              <div className="mt-10 pt-8 border-t border-ams-peach/20 flex justify-end">
+                 <button className="flex items-center gap-3 bg-ams-orange text-white px-8 py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-orange-glow hover:scale-105 active:scale-95 transition-all">
+                   <DollarSign size={18} /> Procesar Pago Individual
+                 </button>
+              </div>
             </div>
           );
-        })}
+        }) : (
+          <div className="col-span-full py-32 text-center opacity-20">
+             <Briefcase size={80} className="mx-auto mb-6" />
+             <h3 className="text-2xl font-display font-black uppercase tracking-widest">No hay profesores para liquidar</h3>
+          </div>
+        )}
       </div>
     </div>
   );

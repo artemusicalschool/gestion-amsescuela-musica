@@ -84,16 +84,18 @@ export interface AttendanceRecord {
   teacherId: string;
   date: string;
   status: 'present' | 'absent';
-  modality: string;
+  modality: string; // Categoría principal
+  // Nuevos campos para precisión de sueldo
+  classType?: ClassType;
+  duration?: ClassDuration;
+  ensambleType?: EnsambleType;
 }
 
 export interface Teacher {
   id: string;
   name: string;
   instrument: string;
-  rates: {
-    [key in ClassCategory]: number;
-  };
+  rates: Record<string, number>; // Cambiado a Record para llaves dinámicas por modalidad específica
   phone?: string;
   email?: string;
   status?: 'activo' | 'inactivo';

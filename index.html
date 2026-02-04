@@ -6,17 +6,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AMS school | Gestión</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
           theme: {
             extend: {
+              fontFamily: {
+                sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                display: ['Outfit', 'sans-serif'],
+              },
               colors: {
                 ams: {
-                  orange: '#EF8652',
-                  peach: '#F9D8C8',
+                  orange: '#FF824D',
+                  peach: '#FFDDCF',
+                  cream: '#FFF9F5',
                   dark: '#2D1A12',
                   brown: '#4A372E',
+                }
+              },
+              borderRadius: {
+                '4xl': '2rem',
+                '5xl': '3rem',
+                '6xl': '4rem',
+              },
+              boxShadow: {
+                'glass': '0 8px 32px 0 rgba(255, 130, 77, 0.08)',
+                'soft': '0 20px 40px -15px rgba(0, 0, 0, 0.05)',
+                'orange-glow': '0 15px 30px -5px rgba(255, 130, 77, 0.4)',
+                'dark-glow': '0 15px 30px -5px rgba(45, 26, 18, 0.3)',
+              },
+              animation: {
+                'shake': 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+              },
+              keyframes: {
+                shake: {
+                  '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                  '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                  '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                  '40%, 60%': { transform: 'translate3d(4px, 0, 0)' },
                 }
               }
             }
@@ -24,27 +51,65 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        body { 
+          font-family: 'Plus Jakarta Sans', sans-serif; 
+          background-color: #FFF9F5;
+          color: #2D1A12;
+        }
+        h1, h2, h3, h4, .font-display { font-family: 'Outfit', sans-serif; }
+        
+        .glass {
+          background: rgba(255, 255, 255, 0.72);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .glass-dark {
+          background: rgba(45, 26, 18, 0.9);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #EF8652; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #FF824D; border-radius: 20px; }
+        
+        .btn-main {
+          transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .btn-main:hover {
+          transform: translateY(-3px) scale(1.02);
+          filter: brightness(1.1);
+        }
+        .btn-main:active {
+          transform: translateY(-1px) scale(0.97);
+        }
+
+        .card-ams {
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .card-ams:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 25px 50px -12px rgba(255, 130, 77, 0.15);
+        }
     </style>
 <script type="importmap">
 {
   "imports": {
     "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "xlsx": "https://esm.sh/xlsx@0.18.5"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }
 }
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-[#FDF6F2] text-ams-dark">
+<body class="text-ams-dark selection:bg-ams-orange selection:text-white antialiased">
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
 </body>

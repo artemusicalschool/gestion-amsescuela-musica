@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Student, StudentStatus, Teacher, AttendanceRecord, ClassModality } from '../types';
-import { Check, X, Calendar as CalendarIcon, User, Music, Info, AlertCircle } from 'lucide-react';
+import { Student, StudentStatus, Teacher, AttendanceRecord, ClassModality, ClassCategory } from '../types';
+// Fixed: Added Users as UsersIcon to imports from lucide-react
+import { Check, X, Calendar as CalendarIcon, User, Music, Info, AlertCircle, Users as UsersIcon } from 'lucide-react';
 
 interface Props {
   students: Student[];
@@ -12,19 +13,24 @@ interface Props {
 }
 
 const AttendanceTracker: React.FC<Props> = ({ students, setStudents, teachers, attendance, setAttendance }) => {
-  // Handle case where teachers list might be empty initially
-  const [selectedTeacher, setSelectedTeacher] = useState<string>(teachers.length > 0 ? teachers[0].id : '');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers.length > 0 ? teachers[0].id : '');
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
 
   const activeStudents = students.filter(s => s.status === StudentStatus.ACTIVE);
 
   const toggleAttendance = (studentId: string, status: 'present' | 'absent', modality: ClassModality) => {
-    if (!selectedTeacher) {
-      alert("Por favor, seleccione o registre un profesor primero.");
+    if (!selectedTeacherId) {
+      alert("Por favor, seleccione un profesor primero.");
       return;
     }
 
-    // Check if record exists for today/student/modality
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    // Intentar encontrar el detalle del plan del alumno para esta categoría
+    // Nota: Esto asume que el alumno tiene planes registrados en 'enrollments'
+    const plan = student.enrollments.find(e => e.category === modality);
+
     const exists = attendance.find(a => a.studentId === studentId && a.date === currentDate && a.modality === modality);
     
     if (exists) {
@@ -33,18 +39,20 @@ const AttendanceTracker: React.FC<Props> = ({ students, setStudents, teachers, a
       const newRecord: AttendanceRecord = {
         id: Math.random().toString(36).substr(2, 9),
         studentId,
-        teacherId: selectedTeacher,
+        teacherId: selectedTeacherId,
         date: currentDate,
         status,
-        modality
+        modality,
+        // Guardar detalles específicos para la liquidación
+        classType: plan?.type,
+        duration: plan?.duration,
+        ensambleType: plan?.ensambleType
       };
       setAttendance([...attendance, newRecord]);
     }
 
-    // Update consecutive absences in students list
     setStudents(prev => prev.map(s => {
       if (s.id === studentId) {
-        // This is a simplified logic for consecutive absences across modalities
         const newConsecutive = status === 'absent' ? s.consecutiveAbsences + 1 : 0;
         return { ...s, consecutiveAbsences: newConsecutive };
       }
@@ -54,105 +62,128 @@ const AttendanceTracker: React.FC<Props> = ({ students, setStudents, teachers, a
 
   if (teachers.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
-        <AlertCircle size={48} className="text-slate-300 mb-4" />
-        <h3 className="text-xl font-bold text-slate-800">No hay profesores registrados</h3>
-        <p className="text-slate-500 max-w-xs text-center mt-2">Para tomar asistencia, primero debe registrar al menos un profesor en el sistema.</p>
+      <div className="flex flex-col items-center justify-center py-20 glass rounded-[4rem] border-2 border-dashed border-ams-peach/50 mt-10">
+        <AlertCircle size={48} className="text-ams-orange opacity-40 mb-4" />
+        <h3 className="text-xl font-display font-black text-ams-brown/30 uppercase tracking-widest">No hay profesores registrados</h3>
+        <p className="text-xs font-bold text-ams-brown/20 uppercase tracking-widest mt-2 max-w-xs text-center">Para tomar asistencia, primero debe registrar al menos un profesor con sus honorarios configurados.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-6 items-end">
-        <div className="flex-1 space-y-2">
-          <label className="text-sm font-semibold text-slate-500 flex items-center gap-2">
-            <User size={16} /> Profesor / Encargado
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h2 className="text-5xl font-display font-black text-ams-dark tracking-tighter">Asistencia</h2>
+          <p className="text-ams-brown/40 font-bold uppercase text-[10px] tracking-[0.4em] mt-3 flex items-center gap-2">
+            <CalendarIcon size={14} className="text-ams-orange" /> REGISTRO DIARIO ACADÉMICO
+          </p>
+        </div>
+      </div>
+
+      <div className="glass p-8 rounded-[3rem] shadow-soft border border-white/60 flex flex-col md:flex-row gap-8 items-end bg-white/30">
+        <div className="flex-1 space-y-3 w-full">
+          <label className="text-[11px] font-black text-ams-brown/40 uppercase tracking-widest pl-4 flex items-center gap-2">
+            <User size={14} className="text-ams-orange" /> Profesor a cargo
           </label>
           <select 
-            value={selectedTeacher} 
-            onChange={(e) => setSelectedTeacher(e.target.value)}
-            className="w-full bg-slate-100 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
+            value={selectedTeacherId} 
+            onChange={(e) => setSelectedTeacherId(e.target.value)}
+            className="w-full bg-white border-none rounded-2xl px-6 py-4 font-bold text-ams-dark ring-1 ring-ams-peach focus:ring-2 focus:ring-ams-orange transition-all outline-none"
           >
             {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.instrument})</option>)}
           </select>
         </div>
-        <div className="flex-1 space-y-2">
-          <label className="text-sm font-semibold text-slate-500 flex items-center gap-2">
-            <CalendarIcon size={16} /> Fecha de Clase
+        <div className="flex-1 space-y-3 w-full">
+          <label className="text-[11px] font-black text-ams-brown/40 uppercase tracking-widest pl-4 flex items-center gap-2">
+            <CalendarIcon size={14} className="text-ams-orange" /> Fecha de clase
           </label>
           <input 
             type="date" 
             value={currentDate} 
             onChange={(e) => setCurrentDate(e.target.value)}
-            className="w-full bg-slate-100 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-white border-none rounded-2xl px-6 py-4 font-bold text-ams-dark ring-1 ring-ams-peach focus:ring-2 focus:ring-ams-orange transition-all outline-none"
           />
         </div>
-        <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex items-center gap-3">
-          <Info className="text-indigo-600" />
-          <p className="text-xs text-indigo-800 font-medium">
-            El sistema alertará automáticamente si un alumno falta a 2 clases seguidas.
+        <div className="bg-ams-orange/5 p-5 rounded-[2rem] border border-ams-orange/20 flex items-center gap-4 w-full md:w-fit">
+          <Info className="text-ams-orange" size={24} />
+          <p className="text-[10px] font-bold text-ams-brown/60 uppercase leading-tight">
+            El sistema calculará el sueldo del profesor <br/> según la modalidad específica del alumno.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {activeStudents.length > 0 ? activeStudents.map(student => {
           const isCritical = student.consecutiveAbsences >= 2;
 
           return (
-            <div key={student.id} className={`bg-white p-5 rounded-2xl shadow-sm border ${isCritical ? 'border-rose-200 bg-rose-50/30' : 'border-slate-200'} transition-all hover:shadow-md`}>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm ${isCritical ? 'bg-rose-500' : 'bg-indigo-500'}`}>
+            <div key={student.id} className={`glass p-6 rounded-[2.5rem] border transition-all duration-300 group hover:shadow-xl ${isCritical ? 'border-rose-200 bg-rose-50/20' : 'border-white/60'}`}>
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-display font-black text-white shadow-lg transition-transform group-hover:rotate-6 ${isCritical ? 'bg-rose-500' : 'bg-ams-dark'}`}>
                     {student.firstName[0]}
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800">{student.firstName} {student.lastName}</h4>
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                      <Music size={12} /> {student.instrument}
+                    <h4 className="font-bold text-ams-dark text-lg leading-tight">{student.firstName} {student.lastName}</h4>
+                    <p className="text-[9px] text-ams-orange font-black uppercase tracking-widest flex items-center gap-1 mt-1">
+                      <Music size={10} /> {student.instrument}
                     </p>
                   </div>
                 </div>
                 {isCritical && (
-                  <span className="bg-rose-100 text-rose-600 text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">
-                    ALERTA AUSENCIA
-                  </span>
+                  <div className="p-2 bg-rose-500 text-white rounded-xl animate-pulse shadow-lg shadow-rose-200">
+                    <AlertCircle size={14} />
+                  </div>
                 )}
               </div>
 
-              <div className="space-y-3">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Marcar Presencia por Modalidad</p>
-                <div className="space-y-2">
-                  {student.modalities.map(mod => {
+              <div className="space-y-4">
+                <p className="text-[9px] text-ams-brown/30 font-black uppercase tracking-widest pl-2">Modalidades Registradas</p>
+                <div className="space-y-3">
+                  {student.modalities.length > 0 ? student.modalities.map(mod => {
                     const modRecord = attendance.find(a => a.studentId === student.id && a.date === currentDate && a.modality === mod);
+                    const plan = student.enrollments.find(e => e.category === mod);
+                    
                     return (
-                      <div key={mod} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100">
-                        <span className="text-xs font-semibold text-slate-600">{mod}</span>
+                      <div key={mod} className="flex items-center justify-between p-3.5 bg-white/60 rounded-2xl border border-ams-peach/30 group/item hover:bg-white transition-all shadow-sm">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-ams-dark uppercase">{mod}</span>
+                          {plan && (
+                            <span className="text-[8px] font-bold text-ams-brown/40 uppercase tracking-tighter">
+                              {plan.type || plan.ensambleType} · {plan.duration || 'N/A'}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex gap-2">
                           <button 
                             onClick={() => toggleAttendance(student.id, 'present', mod)}
-                            className={`p-1.5 rounded-md transition-all ${modRecord?.status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-white text-slate-400 hover:bg-emerald-50'}`}
+                            className={`p-2.5 rounded-xl transition-all active:scale-90 ${modRecord?.status === 'present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-ams-cream text-ams-brown/20 hover:text-emerald-500 hover:bg-emerald-50'}`}
                           >
-                            <Check size={16} />
+                            <Check size={18} />
                           </button>
                           <button 
                             onClick={() => toggleAttendance(student.id, 'absent', mod)}
-                            className={`p-1.5 rounded-md transition-all ${modRecord?.status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : 'bg-white text-slate-400 hover:bg-rose-50'}`}
+                            className={`p-2.5 rounded-xl transition-all active:scale-90 ${modRecord?.status === 'absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-100' : 'bg-ams-cream text-ams-brown/20 hover:text-rose-500 hover:bg-rose-50'}`}
                           >
-                            <X size={16} />
+                            <X size={18} />
                           </button>
                         </div>
                       </div>
                     );
-                  })}
+                  }) : (
+                    <div className="p-4 bg-ams-cream/50 rounded-2xl border border-dashed border-ams-peach/50 text-center">
+                      <p className="text-[8px] font-black text-ams-brown/30 uppercase">Sin modalidades activas</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           );
         }) : (
-          <div className="col-span-full py-12 text-center text-slate-400">
-            No hay alumnos activos registrados para tomar asistencia.
+          <div className="col-span-full py-20 text-center opacity-30">
+            <UsersIcon size={64} className="mx-auto mb-4" />
+            <p className="text-xl font-display font-black uppercase tracking-widest">No hay alumnos activos registrados</p>
           </div>
         )}
       </div>
